@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:defensa_del_muro/screens/level_select_screen.dart';
-import 'package:defensa_del_muro/screens/settings_screen.dart'; // New import for settings screen
+import 'package:defensa_del_muro/screens/settings_screen.dart';
+import 'dart:async';
+import 'dart:math';
+import 'package:video_player/video_player.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,27 +15,112 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
+  late VideoPlayerController _videoPlayerController;
+  late Future<void> _initializeVideoPlayerFuture;
+
+  static const List<String> _loadingMessages = [
+    "Huyendo de los goblins… por ahora.",
+    "Cargando castillos… ¡que no se derrumben!",
+    "Los goblins están tramando algo…",
+    "Las criaturas están despertando…",
+    "Ajustando armaduras… que no se oxiden.",
+    "Reparando las murallas del castillo…",
+    "Persiguiendo goblins traviesos…",
+    "Los monstruos están afilando sus garras…",
+    "Recolectando monedas doradas…",
+    "Encendiendo antorchas…",
+    "Buscando el castillo más alto…",
+    "Los goblins y las demás criaturas están muy callados… sospechoso.",
+    "Preparando trampas para los invasores…",
+    "Los calderos están hirviendo.",
+    "Cargando cofres llenos de secretos…",
+    "Acomodando espadas y escudos…",
+    "Patrullando los alrededores del castillo…",
+    "Los arqueros están apuntando… espero que no a ti.",
+    "Revisando pociones… algunas siguen burbujeando.",
+    "Buscando runas antiguas…",
+  ];
+
+  String _currentLoadingMessage = '';
+  Timer? _timer;
+  final Random _random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Inicializar video
+    _videoPlayerController = VideoPlayerController.asset(
+      'assets/fondos/fondo_home.mp4',
+    );
+    _initializeVideoPlayerFuture = _videoPlayerController.initialize().then((
+      _,
+    ) {
+      _videoPlayerController.setLooping(true);
+      _videoPlayerController.setVolume(0.0);
+      _videoPlayerController.play();
+      setState(() {}); // fuerza rebuild
+    });
+
+    // Mensaje inicial
+    _updateLoadingMessage();
+
+    // Cambiar mensaje cada minuto
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      _updateLoadingMessage();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _videoPlayerController.dispose();
+    super.dispose();
+  }
+
+  void _updateLoadingMessage() {
+    setState(() {
+      _currentLoadingMessage =
+          _loadingMessages[_random.nextInt(_loadingMessages.length)];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: scaffoldKey,
       body: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/fondos/fondo_home.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
+          // Video de fondo
+          FutureBuilder(
+            future: _initializeVideoPlayerFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.done) {
+                return SizedBox.expand(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _videoPlayerController.value.size.width,
+                      height: _videoPlayerController.value.size.height,
+                      child: VideoPlayer(_videoPlayerController),
+                    ),
+                  ),
+                );
+              } else {
+                return Container(color: Colors.black);
+              }
+            },
+          ),
+
+          // Contenido del Home
+          Positioned.fill(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Game Title
                 Expanded(
                   child: Center(
                     child: Text(
-                      '',
+                      '', // Aquí puedes poner el título del juego si quieres
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 60,
@@ -50,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                // Menu Buttons
+                // Botones del menú
                 _MenuButton(
                   imagePath: 'assets/botones/PlayButton.gif',
                   onPressed: () {
@@ -75,15 +163,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 20),
                 _MenuButton(
                   imagePath: 'assets/botones/ScoreboardButton.gif',
-                  onPressed: () {
-                    // TODO: Implement navigation to Scoreboard screen
-                  },
+                  onPressed: () {},
+                ),
+                const SizedBox(height: 40),
+
+                // Mensaje aleatorio
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Text(
+                      _currentLoadingMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        color: Colors.white,
+                        fontFamily: 'Medieval',
+                        shadows: [
+                          Shadow(
+                            blurRadius: 8.0,
+                            color: Colors.black.withAlpha((255 * 0.9).round()),
+                            offset: const Offset(3.0, 3.0),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 const Spacer(),
               ],
             ),
           ),
-          // Hamburger Menu Icon
+
+          // Hamburger Menu
           Positioned(
             bottom: 16.0,
             right: 16.0,
@@ -100,6 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      // Drawer de ajustes
       endDrawer: Drawer(
         child: Container(
           decoration: const BoxDecoration(
@@ -112,12 +225,10 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.zero,
             children: <Widget>[
               Container(
-                height: 80, // Adjust height as needed
+                height: 80,
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 decoration: BoxDecoration(
-                  color: Colors.brown.shade900.withAlpha(
-                    (255 * 0.7).round(),
-                  ), // Darker, semi-transparent background
+                  color: Colors.brown.shade900.withAlpha((255 * 0.7).round()),
                 ),
                 alignment: Alignment.centerLeft,
                 child: const Text(
@@ -125,16 +236,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
-                    fontFamily: 'Medieval', // Apply medieval font
+                    fontFamily: 'Medieval',
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
               ListTile(
-                leading: const Icon(
-                  Icons.login,
-                  color: Colors.white,
-                ), // White icon
+                leading: const Icon(Icons.login, color: Colors.white),
                 title: const Text(
                   'Iniciar sesión',
                   style: TextStyle(
@@ -144,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // Close the drawer
+                  Navigator.pop(context);
                   showDialog(
                     context: context,
                     builder: (BuildContext context) {
@@ -167,9 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(height: 20),
                               ElevatedButton(
-                                onPressed: () {
-                                  // TODO: Implement Google Sign-In
-                                },
+                                onPressed: () {},
                                 child: const Text('Iniciar sesión con Google'),
                               ),
                             ],
@@ -189,10 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(
-                  Icons.settings,
-                  color: Colors.white,
-                ), // White icon
+                leading: const Icon(Icons.settings, color: Colors.white),
                 title: const Text(
                   'Ajustes',
                   style: TextStyle(
@@ -202,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 onTap: () {
-                  Navigator.pop(context); // Close the drawer
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -229,11 +332,7 @@ class _MenuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onPressed,
-      child: Image.asset(
-        imagePath, // Adjust width as needed
-        height: 70, // Adjust height as needed
-        fit: BoxFit.contain,
-      ),
+      child: Image.asset(imagePath, height: 70, fit: BoxFit.contain),
     );
   }
 }

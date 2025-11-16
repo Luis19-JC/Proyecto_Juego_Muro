@@ -26,6 +26,7 @@ flutter:
     - assets/fondos/
     - assets/botones/
     - assets/fondos/fondo_carga.mp4
+    - assets/fondos/fondo_home.mp4
 
   fonts:
     - family: Medieval
